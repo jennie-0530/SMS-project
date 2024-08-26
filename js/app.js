@@ -1,95 +1,134 @@
-/*
-^ 강사님 코드
-import { Student } from "./Student.js";
-import { StudentRepository } from "./student-repository.js";
-import { EventHandler } from "./event-handler.js";
-
-let studentRepository = new StudentRepository();
-// 테스트를 위한 더미데이터 입력
-studentRepository.addStudent(new Student(10, '김기정', 90, 80, 60));
-studentRepository.addStudent(new Student(11, '최기정', 100, 90, 90));
-studentRepository.addStudent(new Student(12, '박기정', 92, 82, 80));
-studentRepository.addStudent(new Student(13, '최기정', 95, 85, 88));
-
-let eventHandler = new EventHandler();
-eventHandler.eventRegist();
-
-export {studentRepository}
-*/
-
-import { saveStudent, readStudents } from "./modules/storage.js";
+//app.js
+import { saveStudent, readStudents, deleteStudent } from "./modules/storage.js";
 
 class Student {
-  constructor(studentNum, name, kor, eng, math, sum, avg) {
+  constructor(studentNum, name, kor, eng, math) {
     this.studentNum = studentNum;
     this.name = name;
     this.kor = kor;
     this.eng = eng;
     this.math = math;
     this.sum = kor + eng + math;
-    this.avg = parseInt(this.sum / 3);
+    this.avg = Math.floor(this.sum / 3);
+    this.rank = 0;
   }
 }
+// TODO 로컬 스토리지
 
 class StudentRepository {
   constructor() {
     this.students = [];
   }
   addStudent(student) {
-    saveStudent(student);
-    return student;
+    this.students.push(student);
+    this.sortRank();
+    this.addRank();
+  }
+  addRank() {
+    this.students.forEach((el, idx) => {
+      el.rank = idx + 1;
+    });
+  }
+  sortRank() {
+    this.students.sort((a, b) => {
+      return b.avg - a.avg;
+    });
   }
 }
-let studentRepository = new StudentRepository();
 
+let studentRepository = new StudentRepository();
+let students = studentRepository.students;
 const addBtn = document.querySelector("#addBtn");
-const table = document.querySelector(".table");
-const tableBody = document.querySelector("tbody");
-console.log(tableBody);
+const searchBtn = document.querySelector("#searchBtn");
+const deleteBtn = document.querySelector("#deleteBtn");
+const tBody = document.querySelector("tbody");
+
+const displayForm = function (arr) {
+  return `
+  ${arr
+    .map((el) => {
+      return `
+    <tr>
+      <td>${el.studentNum}</td>
+      <td>${el.name}</td>
+      <td>${el.kor}</td>
+      <td>${el.eng}</td>
+      <td>${el.math}</td>
+      <td>${el.sum}</td>
+      <td>${el.avg}</td>
+      <td>${el.rank}</td>
+   </tr>
+    `;
+    })
+    .join("")}
+  `;
+};
+
+const inputNum = document.querySelector("input[name=sno]");
+const inputName = document.querySelector("input[name=sname]");
+const inputKor = document.querySelector("input[name=kor]");
+const inputEng = document.querySelector("input[name=eng]");
+const inputMath = document.querySelector("input[name=math]");
+const sortSelect = document.querySelector("#sortSelect");
+const searchSelect = document.querySelector("#searchSelect");
+const searchInput = document.querySelector("#searchInput");
 
 addBtn.addEventListener("click", () => {
-  let student = studentRepository.addStudent(
-    new Student(13, "최기정", 95, 85, 88),
+  const newStudent = new Student(
+    parseInt(inputNum.value),
+    inputName.value,
+    parseInt(inputKor.value),
+    parseInt(inputEng.value),
+    parseInt(inputMath.value),
   );
-  let students = readStudents();
-  console.log(students);
-
-  students.forEach((el, idx) => {
-    // students 배열 순회
-    tableBody.innerHTML = `
-    <tr>
-     <td>${students[idx].studentNum}</td>
-     <td>${students[idx].name}</td>
-     <td>${students[idx].kor}</td>
-     <td>${students[idx].eng}</td>
-     <td>${students[idx].math}</td>
-     <td>${students[idx].sum}</td>
-     <td>${students[idx].avg}</td>
-    </tr>
-    `;
-    table.append(tableBody);
-  });
+  studentRepository.addStudent(newStudent);
+  readStudents(); // 첨에 안읽어오면 버튼 첨에 클릭했을 때 학생이 추가되는 게 아니라 빈 배열이 스토리지에 저장됨
+  saveStudent(newStudent);
+  tBody.innerHTML = displayForm(students);
 });
 
-// return `
-// <tr>
-//  <td>${data[idx].studentNum}</td>
-//  <td>${data[idx].name}</td>
-//  <td>${data[idx].kor}</td>
-//  <td>${data[idx].eng}</td>
-//  <td>${data[idx].math}</td>
-//  <td>${data[idx].sum}</td>
-//  <td>${data[idx].avg}</td>
-// </tr>;
-// `;
+deleteBtn.addEventListener("click", () => {
+  students = readStudents();
+  let result;
+  if (inputNum.value) {
+    result = students.filter(
+      (el) => el.studentNum !== parseInt(inputNum.value),
+    );
+  } else if (inputName.value) {
+    result = students.filter((el) => el.name !== inputName.value);
+  }
+  deleteStudent(result);
+  students = result;
+  tBody.innerHTML = displayForm(students);
+  alert("삭제됐습니다");
+});
 
-/*
-tr 생성 (td를 감싸는 태그)
-td 생성하는데 students 배열에 내가 새로 추가한(배열의 마지막 요소) student 객체의 값들을 td 태그들의 값(내용)으로 각각 매핑해줘야 함.
+sortSelect.addEventListener("change", (e) => {
+  if (sortSelect.value === "rank") {
+    studentRepository.sortRank();
+    tBody.innerHTML = displayForm(students);
+  } else if (sortSelect.value === "ssn") {
+    let result = students.sort((a, b) => {
+      return a.studentNum - b.studentNum;
+    });
+    tBody.innerHTML = displayForm(result);
+  } else if (sortSelect.value === "name") {
+    let result = students.sort((a, b) => {
+      return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    });
+    tBody.innerHTML = displayForm(result);
+  }
+});
 
-[
-    {"studentNum":13,"name":"최기정","kor":95,"eng":85,"math":88, "sum":268, "avg": 89}, => data, 0
-    {"studentNum":13,"name":"최기정","kor":95,"eng":85,"math":88,"sum":268, "avg": 89},
-    {"studentNum":13,"name":"최기정","kor":95,"eng":85,"math":88,"sum":268, "avg": 89}
-] => 서버로부터 받아온 배열 데이터
-*/
+searchBtn.addEventListener("click", () => {
+  if (searchSelect.value === "ssn") {
+    let result = students.filter(
+      (el) => el.studentNum === parseInt(searchInput.value),
+    );
+    tBody.innerHTML = displayForm(result);
+  } else if (searchSelect.value === "name") {
+    let result = students.filter((el) => el.name === searchInput.value);
+    //find 사용하면 결과가 요소 1개, filter 사용하면 만족하는 요소 모두 새로운 배열로 반환.
+    tBody.innerHTML = displayForm(result);
+  }
+});
